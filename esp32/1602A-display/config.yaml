@@ -1,0 +1,97 @@
+esphome:
+  name: esp2
+  friendly_name: esp2
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "xxxxxxxxxxxxx"
+
+ota:
+  - platform: esphome
+    password: "xxxxxxxxxxxxx"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Esp2 Fallback Hotspot"
+    password: "xxxxxxxxxxxxx"
+
+captive_portal:
+
+# Home Assistant Sensors
+sensor:
+  - platform: homeassistant
+    entity_id: sensor.sensor_shelly_pro3em_strom_total_active_power
+    id: stromverbrauch
+    filters:
+      - lambda: |-
+          const float MAX_VERBRAUCH = 3000.0; /* Limit for max 400W display */
+          return fmax(0.0, fmin(x, MAX_VERBRAUCH));
+
+  - platform: homeassistant
+    entity_id: sensor.bkw_total_watt
+    id: pv_erzeugung
+    filters:
+      - lambda: |-
+          const float MAX_ERZEUGUNG = 700.0; /* Limit for max 700W display */
+          return fmax(0.0, fmin(x, MAX_ERZEUGUNG));
+
+# LCD Display with graphical representation
+display:
+  - platform: lcd_gpio
+    dimensions: 16x2
+    data_pins: [4, 16, 17, 5]
+    enable_pin: 18
+    rs_pin: 19
+    update_interval: 15s
+    lambda: |-
+      const int MAX_LENGTH = 16; // Maximum bar length (LCD width)
+      const float MAX_VERBRAUCH = 3000.0; // Max value for 100% bar length (Consumption)
+      const float MAX_ERZEUGUNG = 700.0;
+      
+      // Calculate bar lengths
+      int verbrauch_bar = (id(stromverbrauch).state / MAX_VERBRAUCH) * (MAX_LENGTH - 7);
+      int pv_bar = (id(pv_erzeugung).state / MAX_ERZEUGUNG) * (MAX_LENGTH - 7);
+
+      // Ensure values do not exceed limits
+      verbrauch_bar = fmax(0, fmin(verbrauch_bar, MAX_LENGTH - 7));
+      pv_bar = fmax(0, fmin(pv_bar, MAX_LENGTH - 7));
+
+      // Display consumption with watt value
+      it.printf(0, 0, "V: %.0fW ", id(stromverbrauch).state);
+      for (int i = 0; i < verbrauch_bar; i++) {
+        it.print(i + 9, 0, "#"); // ASCII bar for consumption
+      }
+
+      // Display PV generation with watt value
+      it.printf(0, 1, "E: %.0fW ", id(pv_erzeugung).state);
+      for (int i = 0; i < pv_bar; i++) {
+        it.print(i + 9, 1, "#"); // ASCII bar for generation
+      }
+
+# LCD Backlight Configuration
+output:
+  - platform: ledc
+    pin: 21  # Adjusted GPIO pin for backlight
+    id: lcd_backlight
+    frequency: 5000Hz
+
+light:
+  - platform: monochromatic
+    output: lcd_backlight
+    name: "LCD Backlight"
+    id: backlight
+    default_transition_length: 1s
+    restore_mode: ALWAYS_ON
