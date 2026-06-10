@@ -265,7 +265,13 @@ sequence:
               }}
         then:
           - data:
-              icon: 12060
+              icon: >-
+                {% set abhol = states('sensor.nachste_abholung') | string %}
+                {% if 'Papier' in abhol %}10124
+                {% elif 'Gelbe Tonne / Sack' in abhol %}11005
+                {% elif 'Bioabfall' in abhol %}12442
+                {% elif 'Restmüll 4 wö.' in abhol %}11977
+                {% else %}12060{% endif %}
               rainbow: false
               topicname: awtrix-muell
               text: "{{ states('sensor.nachste_abholung') }}"
