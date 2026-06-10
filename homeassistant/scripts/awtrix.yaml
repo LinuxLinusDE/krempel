@@ -1,0 +1,484 @@
+sequence:
+  - alias: Netzbezug
+    action: script.awtrix_new_app
+    metadata: {}
+    data:
+      rainbow: false
+      topicname: awtrix-strom-total
+      text: >-
+        {{
+        '{:.0f}'.format(states('sensor.sensor_shelly_pro3em_strom_total_active_power')
+        | float) }}
+      icon: >-
+        {% set value =
+        states('sensor.sensor_shelly_pro3em_strom_total_active_power') | float
+        %} {% if value >= 0 %}21256{% else %}32930{% endif %}
+      duration: 6
+    enabled: true
+  - alias: Stromverbrauch-real
+    action: script.awtrix_new_app
+    metadata: {}
+    data:
+      rainbow: false
+      topicname: awtrix-power-consumption
+      text: "{{ '{:.0f}'.format(states('sensor.realer_hausverbrauch') | float) }} W"
+      duration: 6
+      icon: 52619
+    enabled: false
+  - alias: sensor.pv_total ueber 0
+    if:
+      - condition: numeric_state
+        entity_id: sensor.pv_total
+        above: 30
+    then:
+      - alias: awtrix-anzeige pv total
+        action: script.awtrix_new_app
+        metadata: {}
+        data:
+          icon: 52452
+          rainbow: false
+          duration: 6
+          topicname: awtrix-pv-total
+          text: "{{ '{:.0f}'.format(states('sensor.pv_total') | float) }}"
+    else:
+      - alias: awtrix anzeige pv total loeschen
+        action: script.awtrix_delete_app
+        metadata: {}
+        data:
+          topicname: awtrix-pv-total
+    enabled: true
+  - alias: pv-total
+    action: script.awtrix_new_app
+    metadata: {}
+    data:
+      rainbow: false
+      topicname: awtrix-pv-total
+      text: "{{ '{:.0f}'.format(states('sensor.pv_total') | float) }}"
+      icon: 52452
+      duration: 6
+    enabled: false
+  - alias: sofar-soc
+    if:
+      - condition: numeric_state
+        entity_id: sensor.sofar_battery
+        below: 100
+    then:
+      - action: script.awtrix_new_app
+        metadata: {}
+        data:
+          rainbow: false
+          topicname: awtrix-pv-soc
+          text: "{{ '{:.0f}'.format(states('sensor.sofar_battery') | float) }} %"
+          icon: >-
+            {% set soc = states('sensor.sofar_battery') | float %} {% if soc >
+            95 %}13735 {% elif soc > 75 %}13732 {% elif soc > 50 %}13731 {% elif
+            soc > 40 %}13733 {% elif soc > 20 %}13725 {% else %}13734 {% endif
+            %}
+          duration: 6
+    else:
+      - action: script.awtrix_delete_app
+        metadata: {}
+        data:
+          topicname: awtrix-pv-soc
+  - alias: Sofar Laden u. Entladen
+    sequence:
+      - if:
+          - condition: numeric_state
+            entity_id: sensor.sofar_battery
+            below: 100
+          - condition: or
+            conditions:
+              - condition: numeric_state
+                entity_id: sensor.sofar_battery_power
+                below: -10
+              - condition: numeric_state
+                entity_id: sensor.sofar_battery_power
+                above: 10
+        then:
+          - data:
+              rainbow: false
+              topicname: awtrix-pv-soc-2
+              text: >-
+                {{ '{:.0f}'.format(states('sensor.sofar_battery_power') | float)
+                }} W
+              icon: >-
+                {{ (52370 if (states('sensor.sofar_battery_power') | float) >= 0
+                else 52368) | int }}
+              duration: 6
+            action: script.awtrix_new_app
+        else:
+          - data:
+              topicname: awtrix-pv-soc-2
+            action: script.awtrix_delete_app
+  - alias: pv-export
+    action: script.awtrix_new_app
+    metadata: {}
+    data:
+      rainbow: false
+      topicname: awtrix-day-export
+      text: >-
+        {{ '{:.2f}'.format(states('sensor.sofar_today_energy_export') | float)
+        }} kWh  E: {{ '{:.2f}'.format(states('sensor.sofar_export_today_gains')
+        | float) }} €  G: {{ '{:.2f}'.format(states('sensor.sofar_today_gains')
+        | float) }} €
+      icon: 64131
+      duration: 13
+    enabled: true
+  - alias: temp-indoor
+    action: script.awtrix_new_app
+    metadata: {}
+    data:
+      rainbow: false
+      topicname: awtrix-temp-indoor
+      text: >-
+        {{ '{:.0f}'.format(states('sensor.temp_govee_wohn_8b_77_temperature') |
+        float) }} C
+      icon: 12731
+      duration: 6
+    enabled: true
+  - alias: temp-outdoor
+    action: script.awtrix_new_app
+    metadata: {}
+    data:
+      rainbow: false
+      topicname: awtrix-temp-outdoor
+      text: >-
+        {{ '{:.0f}'.format(states('sensor.temp_govee_out_a8_e2_temperature') |
+        float) }} C
+      icon: "{{ states('sensor.coesfeld_wetterzustand') }}"
+      duration: 6
+    enabled: true
+  - alias: co-anzeige
+    if:
+      - condition: numeric_state
+        entity_id: sensor.esp_pv_display_co2_concentration
+        above: 700
+    then:
+      - action: script.awtrix_new_app
+        metadata: {}
+        data:
+          rainbow: false
+          topicname: awtrix-co2
+          text: >-
+            {{ states('sensor.esp_pv_display_co2_concentration') | float |
+            round(0) | int }}!
+          icon: 41032
+          duration: 6
+          textcase: 2
+    else:
+      - action: script.awtrix_delete_app
+        metadata: {}
+        data:
+          topicname: awtrix-co2
+  - alias: water-plant
+    if:
+      - condition: numeric_state
+        entity_id: sensor.sensor_soil_plant_01_soil_moisture
+        below: 35
+    then:
+      - action: script.awtrix_new_app
+        metadata: {}
+        data:
+          rainbow: false
+          topicname: awtrix-plant-water
+          text: "{{ states('sensor.sensor_soil_plant_01_soil_moisture') }} %"
+          icon: "7699"
+          duration: 6
+          textcase: 2
+    else:
+      - action: script.awtrix_delete_app
+        metadata: {}
+        data:
+          topicname: awtrix-plant-water
+  - alias: muellanzeige-org
+    sequence:
+      - if:
+          - condition: template
+            value_template: >-
+              {% set abhol = states('sensor.nachste_abholung') %} {{ ('Heute' in
+              abhol or 'Morgen' in abhol)
+                 and (("Papier" in abhol)
+                     or ("Gelbe Tonne / Sack" in abhol)
+                     or ("Bioabfall" in abhol)
+                     or ("Restmüll 4 wö." in abhol)) }}
+        then:
+          - action: script.awtrix_new_app
+            metadata: {}
+            data:
+              icon: 12060
+              rainbow: false
+              topicname: awtrix-muell
+              text: "{{ states('sensor.nachste_abholung') }}"
+              duration: 10
+              textcase: 2
+        else:
+          - action: script.awtrix_delete_app
+            metadata: {}
+            data:
+              topicname: awtrix-muell
+    enabled: false
+  - alias: pool-temperatur
+    if:
+      - condition: numeric_state
+        entity_id: sensor.smart_switch_2309268223619551081248e1e9dbb380_power
+        above: 10
+    then:
+      - action: script.awtrix_new_app
+        metadata: {}
+        data:
+          rainbow: false
+          topicname: awtrix-pool
+          text: >-
+            {{
+            '{:.1f}'.format(states('sensor.esp_temperatur_sensor_esp_temperatur_3')
+            | float) }} C | {{
+            '{:.0f}'.format(states('sensor.smart_switch_2309268223619551081248e1e9dbb380_power')
+            | float) }} W
+          icon: 47989
+          duration: 12
+          textcase: 2
+    else:
+      - action: script.awtrix_delete_app
+        metadata: {}
+        data:
+          topicname: awtrix-pool
+  - alias: muellanzeige
+    sequence:
+      - if:
+          - condition: template
+            value_template: >
+              {% set abhol = states('sensor.nachste_abholung') | string %}
+
+              {% set rausgestellt = is_state('input_boolean.sensor_muell_raus',
+              'off') %}
+
+              {% set h = now().hour %}
+
+              {{ rausgestellt
+                 and ( ('Morgen' in abhol and h >= 19) or ('Heute' in abhol) )
+                 and (
+                   'Papier' in abhol
+                   or 'Gelbe Tonne / Sack' in abhol
+                   or 'Bioabfall' in abhol
+                   or 'Restmüll 4 wö.' in abhol
+                 )
+              }}
+        then:
+          - data:
+              icon: 12060
+              rainbow: false
+              topicname: awtrix-muell
+              text: "{{ states('sensor.nachste_abholung') }}"
+              duration: 10
+              textcase: 2
+            action: script.awtrix_new_app
+        else:
+          - data:
+              topicname: awtrix-muell
+            action: script.awtrix_delete_app
+  - alias: Haustür offen
+    if:
+      - condition: state
+        entity_id: binary_sensor.sensor_door_frontdoor_contact
+        state: "on"
+    then:
+      - action: script.awtrix_new_app
+        metadata: {}
+        data:
+          rainbow: false
+          topicname: awtrix-frontdoor-open
+          text: Haustür offen!
+          duration: 20
+          textcase: 2
+          icon: 15588
+          showimmediately: true
+    else:
+      - action: script.awtrix_delete_app
+        metadata: {}
+        data:
+          topicname: awtrix-frontdoor-open
+  - alias: Geburtstagsanzeige
+    choose:
+      - conditions:
+          - condition: template
+            value_template: >-
+              {% set birthdays = {
+                "02.06.": "Judith",
+                "28.01.": "Charlotte",
+                "10.10.": "Emmeline",
+                "15.10.": "Linus"
+              } %} {% set today = now().strftime('%d.%m.') %} {{ today in
+              birthdays }}
+        sequence:
+          - variables:
+              birthdays:
+                02.06.: Judith
+                28.01.: Charlotte
+                10.10.: Emmeline
+                15.10.: Linus
+              today: "{{ now().strftime('%d.%m.') }}"
+              name: "{{ birthdays[today] }}"
+          - data:
+              topicname: awtrix-birthday
+              text: Alles Gute, {{ name }}!
+              icon: 102
+              duration: 30
+              textcase: 2
+              rainbow: true
+              showimmediately: false
+              lifetime: 40
+            action: script.awtrix_new_app
+    default:
+      - data:
+          topicname: awtrix-birthday
+        action: script.awtrix_delete_app
+  - alias: 3d-printer-prozent
+    if:
+      - condition:
+          - condition: state
+            entity_id: binary_sensor.octoprint_printing
+            state: "on"
+        alias: pruefen ob drucker druckt
+    then:
+      - action: script.awtrix_new_app
+        metadata: {}
+        data:
+          rainbow: false
+          topicname: awtrix-3d
+          text: "{{ states('sensor.octoprint_job_percentage') | float | round(1) }} %"
+          icon: 51841
+          duration: 12
+          textcase: 2
+    else:
+      - action: script.awtrix_delete_app
+        metadata: {}
+        data:
+          topicname: awtrix-3d
+  - alias: 3d-printer-fertig
+    if:
+      - alias: pruefen ob drucker druckt
+        condition: and
+        conditions:
+          - condition: numeric_state
+            entity_id: sensor.octoprint_job_percentage
+            above: 99.9
+    then:
+      - action: script.awtrix_new_app
+        metadata: {}
+        data:
+          rainbow: true
+          topicname: awtrix-3d-fertig
+          text: "{{ states('sensor.octoprint_job_percentage') | float | round(0) }} %"
+          duration: 12
+          textcase: 2
+          icon: 56930
+    else:
+      - action: script.awtrix_delete_app
+        metadata: {}
+        data:
+          topicname: awtrix-3d-fertig
+  - alias: kwl-temp
+    if:
+      - condition: numeric_state
+        entity_id: sensor.plug_kwl_power
+        above: 10
+    then:
+      - alias: anzeige-kwl
+        action: script.awtrix_new_app
+        metadata: {}
+        data:
+          rainbow: false
+          topicname: kwl-temp
+          text: >-
+            {{ '{:.1f}'.format(states('sensor.sensor_th_kwl_in_temperature') |
+            float) }} C
+          icon: 55022
+          duration: 5
+          textcase: 2
+    else:
+      - alias: del-kwl
+        action: script.awtrix_delete_app
+        metadata: {}
+        data:
+          topicname: kwl-temp
+  - alias: kwl-hum
+    if:
+      - condition: numeric_state
+        entity_id: sensor.plug_kwl_power
+        above: 10
+    then:
+      - alias: anzeige-kwl
+        action: script.awtrix_new_app
+        metadata: {}
+        data:
+          rainbow: false
+          topicname: kwl-hum
+          text: >-
+            {{ '{:.1f}'.format(states('sensor.sensor_th_kwl_in_humidity')
+            |float) }} %
+          icon: 55022
+          duration: 5
+          textcase: 2
+    else:
+      - alias: del-kwl
+        action: script.awtrix_delete_app
+        metadata: {}
+        data:
+          topicname: kwl-hum
+  - alias: Nuki-Battery
+    if:
+      - condition: numeric_state
+        entity_id: sensor.flur_haustuer_ultra_battery
+        below: 26
+    then:
+      - alias: nuki-battery
+        action: script.awtrix_new_app
+        metadata: {}
+        data:
+          rainbow: false
+          text: >-
+            {{ '{:.0f}'.format(states('sensor.flur_haustuer_ultra_battery')
+            |float) }} %
+          icon: 59064
+          duration: 5
+          textcase: 2
+          topicname: nuki-battery
+    else:
+      - alias: nuki-battery
+        action: script.awtrix_delete_app
+        metadata: {}
+        data:
+          topicname: nuki-battery
+  - alias: flighradar
+    if:
+      - condition: numeric_state
+        entity_id: sensor.visible_flights
+        above: 0
+    then:
+      - action: script.awtrix_new_app
+        metadata: {}
+        data:
+          rainbow: false
+          topicname: awtrix-flight
+          icon: 2933
+          duration: 45
+          textcase: 2
+          text: >-
+            {% set flights = state_attr('sensor.visible_flights', 'flights')
+            %}{% if flights and flights | count > 0 %}{% for flight in flights
+            %}{% if flight.aircraft_model %}{{ flight.aircraft_model }} ({{
+            flight.aircraft_type }}) {% endif %}{% if flight.origin_city or
+            flight.origin_country or flight.destination_city or
+            flight.destination_country or flight.origin_airport_name or
+            flight.destination_airport_name %}{{ flight.origin_city }}, {{
+            flight.origin_country }} -> {{ flight.destination_city }}, {{
+            flight.destination_country }} | {% endif %}{% endfor %}{% endif %}
+          showimmediately: true
+    else:
+      - action: script.awtrix_delete_app
+        metadata: {}
+        data:
+          topicname: awtrix-flight
+    enabled: false
+alias: Neues Skript
+description: ""
